@@ -25,6 +25,7 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 - (UIScrollView *)listScrollView;
 
 @optional
+// 对应collectionView willDisplayCell/didEndDisplayCell
 - (void)listViewDidAppear;
 - (void)listViewDidDisappear;
 
@@ -60,22 +61,22 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 /// 列表容器滑动代理
 /// @param smoothView smoothView
 /// @param scrollView containerScrollView
-- (void)smoothView:(GKPageSmoothView *)smoothView scrollViewDidScroll:(UIScrollView *)scrollView;
+- (void)smoothView:(GKPageSmoothView *)smoothView scrollViewDidScroll:(UIScrollView *)scrollView; // page滑动, 横向
 
 /// 当前列表滑动代理
 /// @param smoothView smoothView
 /// @param scrollView 当前的列表scrollView
 /// @param contentOffset 转换后的contentOffset
-- (void)smoothView:(GKPageSmoothView *)smoothView listScrollViewDidScroll:(UIScrollView *)scrollView contentOffset:(CGPoint)contentOffset;
+- (void)smoothView:(GKPageSmoothView *)smoothView listScrollViewDidScroll:(UIScrollView *)scrollView contentOffset:(CGPoint)contentOffset; // 内容滑动, 纵向, contentOffset带横向信息
 
 /// 开始拖拽代理
 /// @param smoothView smoothView
-- (void)smoothViewDragBegan:(GKPageSmoothView *)smoothView;
+- (void)smoothViewDragBegan:(GKPageSmoothView *)smoothView; // 拖拽底部section/page
 
 /// 结束拖拽代理
 /// @param smoothView smoothView
 /// @param isOnTop 是否通过拖拽滑动到顶部
-- (void)smoothViewDragEnded:(GKPageSmoothView *)smoothView isOnTop:(BOOL)isOnTop;
+- (void)smoothViewDragEnded:(GKPageSmoothView *)smoothView isOnTop:(BOOL)isOnTop; // 拖拽底部section/page
 
 @end
 
@@ -95,13 +96,13 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 @property (nonatomic, assign) NSInteger currentIndex;
 
 /// 当前列表
-@property (nonatomic, weak, readonly) UIScrollView *currentListScrollView;
+@property (nonatomic, weak, readonly) UIScrollView *currentListScrollView; // 内容scrollview
 
 /// 是否禁止主页滑动，默认NO
 @property (nonatomic, assign, getter=isMainScrollDisabled) BOOL mainScrollDisabled;
 
 /// 吸顶临界高度（默认为0）
-@property (nonatomic, assign) CGFloat ceilPointHeight;
+@property (nonatomic, assign) CGFloat ceilPointHeight; // 吸顶时顶部保留的高度
 
 /// 是否内部控制指示器的显示与隐藏（默认为NO）
 @property (nonatomic, assign, getter=isControlVerticalIndicator) BOOL controlVerticalIndicator;
@@ -110,7 +111,7 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 @property (nonatomic, assign, getter=isBottomHover) BOOL bottomHover;
 
 /// 是否允许底部拖拽，默认NO，当bottomHover为YES时才生效
-@property (nonatomic, assign, getter=isAllowDragBottom) BOOL allowDragBottom;
+@property (nonatomic, assign, getter=isAllowDragBottom) BOOL allowDragBottom; // 是否对bottomContainerView添加gr
 
 /// 是否允许底部拖拽到临界位置时可滑动scrollView，默认NO
 @property (nonatomic, assign, getter=isAllowDragScroll) BOOL allowDragScroll;
@@ -123,10 +124,10 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 @property (nonatomic, assign, readonly) GKPageSmoothHoverType hoverType;
 
 /// 是否通过拖拽滑动到顶部
-@property (nonatomic, assign, readonly) BOOL isOnTop;
+@property (nonatomic, assign, readonly) BOOL isOnTop; // 通过拖拽开始向上滑动或已经滑动到吸顶
 
 /// header容器的高度
-@property (nonatomic, assign, readonly) CGFloat headerContainerHeight;
+@property (nonatomic, assign, readonly) CGFloat headerContainerHeight; // header高度+segment高度
 
 - (instancetype)initWithDataSource:(id<GKPageSmoothViewDataSource>)dataSource NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
@@ -152,12 +153,12 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 /**
  滑动到临界点，可用于当headerView较长情况下，直接跳到临界点状态
  */
-- (void)scrollToCriticalPoint;
+- (void)scrollToCriticalPoint; // segment吸顶(包含保留高度ceilPointHeight)
 
 /// 显示在顶部
-- (void)showingOnTop;
+- (void)showingOnTop; // 执行滑动吸顶过程
 
 /// 显示在底部
-- (void)showingOnBottom;
+- (void)showingOnBottom; // 执行滑动吸底过程
 
 @end
