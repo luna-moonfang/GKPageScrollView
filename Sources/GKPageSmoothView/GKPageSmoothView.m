@@ -52,7 +52,7 @@ static NSString *const GKPageSmoothViewCellID = @"smoothViewCell";
 @property (nonatomic, assign) CGFloat headerContainerHeight; // headerHeight+segmentedHeight
 @property (nonatomic, assign) CGFloat headerHeight;
 @property (nonatomic, assign) CGFloat segmentedHeight;
-@property (nonatomic, assign) CGFloat currentListInitializeContentOffsetY; //
+@property (nonatomic, assign) CGFloat currentListInitializeContentOffsetY; // 内容scrollView初始化时的contentOffset位置,
 
 @property (nonatomic, assign) BOOL      isLoaded; // ???: xxx已加载. 不加载collectionView不显示内容
 
