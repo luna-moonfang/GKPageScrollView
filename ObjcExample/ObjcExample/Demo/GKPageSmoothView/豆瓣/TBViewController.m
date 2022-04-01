@@ -130,7 +130,7 @@ static void *listScrollView2Context = &listScrollView2Context;
 
 #pragma mark -
 
-@interface TBViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, JXCategoryViewDelegate, TBPageSmoothViewDataSource, TBPageSmoothViewDelegate>
+@interface TBViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, JXCategoryViewDelegate, TBPageSmoothViewDataSource, TBPageSmoothViewDelegate, UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, id<TBPageSmoothListViewDelegate>> *listDict;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, UIView *> *listHeaderDict;
@@ -158,6 +158,7 @@ static void *listScrollView2Context = &listScrollView2Context;
 @property (nonatomic, assign) CGFloat ceilPointHeight; // 吸顶时顶部保留的高度
 @property (nonatomic, assign) CGFloat currentListInitializeContentOffsetY; // 内容scrollView初始化时的contentOffset位置, 可能需要滚动露出header部分
 @property (nonatomic, assign) CGFloat currentHeaderContainerViewY; // headerContainerView作为self的subview时的y值, 用于横向滚动时记录header的位置, 帮助实现悬浮效果
+@property (nonatomic, assign) CGFloat currentBottomContainerViewY;
 
 @property (nonatomic, assign) CGFloat currentListInitializeContentOffsetY2;
 
@@ -168,6 +169,13 @@ static void *listScrollView2Context = &listScrollView2Context;
 @property (nonatomic, weak) UIScrollView *currentListScrollView2;
 
 @property (nonatomic, assign) BOOL bottomHover;
+
+@property (nonatomic, assign) BOOL isBottom;
+
+@property (nonatomic, strong) UIPanGestureRecognizer *panGesture; // 加在bottomContainerView的手势
+@property (nonatomic, assign) CGFloat    lastTransitionY; // panGesture手势在bottomContainerView的CGPoint的y
+@property (nonatomic, weak) UIScrollView *scrollView; // panGesture手势所在的内容scrollview
+@property (nonatomic, assign) BOOL       isDragScrollView; // panGesture手势是否在内容scrollview上, NO表示在bottomContainerView(即segment上)
 
 @end
 
@@ -235,6 +243,8 @@ static void *listScrollView2Context = &listScrollView2Context;
         [self.bottomContainerView addSubview:self.listCollectionView2];
         
         self.categoryView2.contentScrollView = self.listCollectionView2;
+        
+        [self.bottomContainerView addGestureRecognizer:self.panGesture];
     }
 }
 
@@ -251,6 +261,8 @@ static void *listScrollView2Context = &listScrollView2Context;
     CGRect rect = self.bottomContainerView.frame;
     rect.origin.y -= self.view.safeAreaInsets.bottom;
     self.bottomContainerView.frame = rect;
+    
+    self.currentBottomContainerViewY = self.view.bounds.size.height - self.segmentedHeight - self.view.safeAreaInsets.bottom;
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -259,6 +271,23 @@ static void *listScrollView2Context = &listScrollView2Context;
     // delegate
     if ([self respondsToSelector:@selector(smoothView:scrollViewDidScroll:)]) {
         [self smoothView:nil scrollViewDidScroll:scrollView];
+    }
+    
+    if (scrollView == self.listCollectionView2) {
+        CGFloat indexPercent = scrollView.contentOffset.x/scrollView.bounds.size.width;
+        NSInteger index = floor(indexPercent);
+        
+        UIScrollView *listScrollView = self.listDict2[@(index)].listScrollView;
+        if (index != self.currentIndex2 &&
+            indexPercent - index == 0 &&
+            !(scrollView.isDragging || scrollView.isDecelerating) &&
+            listScrollView.contentOffset.y <= -(self.segmentedHeight + self.ceilPointHeight)) {
+            // 达到翻页条件, 执行翻页
+            // -(segmentedHeight+ceilPointHeight) 是临界点y值, contentOffsetY小于临界值说明未吸顶
+            [self horizontalScrollDidEndAtIndex2:index];
+        }
+        
+        return;
     }
     
     CGFloat indexPercent = scrollView.contentOffset.x/scrollView.bounds.size.width;
@@ -280,6 +309,13 @@ static void *listScrollView2Context = &listScrollView2Context;
             self.headerContainerView.frame = frame;
             [self.view addSubview:self.headerContainerView];
         }
+        
+        if (self.bottomContainerView.superview != self.view) {
+            CGRect frame = self.bottomContainerView.frame;
+            frame.origin.y = self.currentBottomContainerViewY;
+            self.bottomContainerView.frame = frame;
+            [self.view addSubview:self.bottomContainerView];
+        }
     }
 }
 
@@ -297,14 +333,21 @@ static void *listScrollView2Context = &listScrollView2Context;
 
 - (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView {
     NSLog(@"scrollViewWillBeginDecelerating");
+    self.panGesture.enabled = YES;
 }
 
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
     NSLog(@"scrollViewDidEndDecelerating");
     
     NSInteger index = scrollView.contentOffset.x / scrollView.bounds.size.width;
-    [self horizontalScrollDidEndAtIndex:index];
-//    self.panGesture.enabled = YES;
+    
+    if (scrollView == self.listCollectionView) {
+        [self horizontalScrollDidEndAtIndex:index];
+    } else {
+        [self horizontalScrollDidEndAtIndex2:index];
+    }
+    
+    self.panGesture.enabled = YES;
 }
 
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
@@ -507,6 +550,117 @@ static void *listScrollView2Context = &listScrollView2Context;
     }
 }
 
+#pragma mark - UIGestureRecognizerDelegate
+
+- (void)handlePanGesture:(UIPanGestureRecognizer *)panGesture {
+    if (panGesture.state == UIGestureRecognizerStateBegan) {
+        // delegate: drag began
+        
+//        [self dragBegan];
+                
+        // bug fix #47，当UIScrollView向下滚动的时候，向下拖拽完成手势操作导致的错乱问题
+        if (self.currentListScrollView.isDecelerating) {
+            [self.currentListScrollView setContentOffset:self.currentListScrollView.contentOffset animated:NO];
+        }
+    }
+    
+    // gr在bottomContainerView的坐标
+    CGPoint translation = [panGesture translationInView:self.bottomContainerView];
+    
+    if (self.isDragScrollView) {
+        if (self.scrollView.contentOffset.y <= 0) {
+            if (translation.y > 0) { // 向下拖拽
+                self.isDragScrollView = NO;
+                
+                CGRect frame = self.bottomContainerView.frame;
+                frame.origin.y += translation.y;
+                self.bottomContainerView.frame = frame;
+            }
+        }
+    } else {
+        CGFloat offsetY = self.currentListScrollView2.contentOffset.y;
+        CGFloat ceilPointY = self.ceilPointHeight;
+        
+        if (self.scrollView.contentOffset.y <= 0) {
+            if (translation.y > 0) { // 向下拖拽
+                CGRect frame = self.bottomContainerView.frame;
+                frame.origin.y += translation.y;
+                self.bottomContainerView.frame = frame;
+            } else if (translation.y < 0 && self.bottomContainerView.frame.origin.y > ceilPointY) { // 向上拖拽
+                CGRect frame = self.bottomContainerView.frame;
+                frame.origin.y = MAX((self.bottomContainerView.frame.origin.y + translation.y), ceilPointY);
+                self.bottomContainerView.frame = frame;
+            }
+        } else {
+            if (translation.y < 0 && self.bottomContainerView.frame.origin.y > ceilPointY) {
+                CGRect frame = self.bottomContainerView.frame;
+                frame.origin.y = MAX((self.bottomContainerView.frame.origin.y + translation.y), ceilPointY);
+                self.bottomContainerView.frame = frame;
+            }
+        }
+    }
+    
+    
+    
+    if (panGesture.state == UIGestureRecognizerStateEnded) {
+        CGPoint velocity = [panGesture velocityInView:self.bottomContainerView];
+        if (velocity.y < 0) { // 上滑
+            if (fabs(self.lastTransitionY) > 5 && self.isDragScrollView == NO) {
+                [self dragShowing];
+            } else {
+                if (self.bottomContainerView.frame.origin.y > (self.ceilPointHeight + self.bottomContainerView.frame.size.height / 2)) {
+                    [self dragDismiss];
+                }else {
+                    [self dragShowing];
+                }
+            }
+        } else { // 下滑
+            if (fabs(self.lastTransitionY) > 5 && self.isDragScrollView == NO && !self.scrollView.isDecelerating) {
+                [self dragDismiss];
+            }else {
+                if (self.bottomContainerView.frame.origin.y > (self.ceilPointHeight + self.bottomContainerView.frame.size.height / 2)) {
+                    [self dragDismiss];
+                } else {
+                    [self dragShowing];
+                }
+            }
+        }
+        
+        self.isDragScrollView = NO;
+        self.scrollView = nil;
+    }
+    
+    [panGesture setTranslation:CGPointZero inView:self.bottomContainerView];
+    self.lastTransitionY = translation.y;
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    CGPoint transition = [(UIPanGestureRecognizer *)gestureRecognizer translationInView:gestureRecognizer.view];
+    if (transition.x != 0) {
+        return NO;
+    } else {
+        return YES;
+    }
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    if (gestureRecognizer == self.panGesture) {
+        UIView *touchView = touch.view;
+        while (touchView != nil) {
+            if (touchView == self.currentListScrollView2) {
+                self.scrollView = (UIScrollView *)touchView;
+                self.isDragScrollView = YES;
+                break;
+            } else if (touchView == self.bottomContainerView) { // segment
+                self.isDragScrollView = NO;
+                break;
+            }
+            touchView = (UIView *)[touchView nextResponder];
+        }
+    }
+    return YES;
+}
+
 #pragma mark - Private Methods
 
 - (void)listScrollViewDidScroll:(UIScrollView *)scrollView {
@@ -566,10 +720,11 @@ static void *listScrollView2Context = &listScrollView2Context;
     
     // 处理bottomContainerView
     // 默认segment2吸底, 如果page1剩余部分不足一屏也可能不吸底
-    CGFloat visibleHeight = self.view.bounds.size.height;
+    CGFloat visibleHeight = self.view.bounds.size.height - self.segmentedHeight;
     if (@available(iOS 11.0, *)) {
         visibleHeight -= self.view.safeAreaInsets.bottom;
     }
+    self.panGesture.enabled = YES;
     // 滚动未超过(整体高度-可见高度), 吸底
     if (contentOffsetY < (self.headerContainerHeight + scrollView.contentSize.height - visibleHeight)) {
         // bottomContainerView添加到self.view, 吸底
@@ -581,14 +736,20 @@ static void *listScrollView2Context = &listScrollView2Context;
             }
             self.bottomContainerView.frame = frame;
             [self.view addSubview:self.bottomContainerView];
+            
+            self.currentBottomContainerViewY = frame.origin.y;
         }
     }
     // 滚动超过(整体高度-可见高度), 拉起segment2, 不吸底
     else {
+        self.panGesture.enabled = NO;
         // bottomContainerView添加到listFooter
         UIView *listFooter = [self listFooterForListScrollView:scrollView];
+        CGRect frame = [self.bottomContainerView convertRect:self.bottomContainerView.frame toView:self.view];
+        self.currentBottomContainerViewY = frame.origin.y;
         if (self.bottomContainerView.superview != listFooter) {
-            CGRect frame = self.bottomContainerView.frame;
+//            CGRect frame = self.bottomContainerView.frame;
+//            self.currentBottomContainerViewY = frame.origin.y;
             frame.origin.y = 0;
             self.bottomContainerView.frame = frame;
             [listFooter addSubview:self.bottomContainerView];
@@ -603,17 +764,16 @@ static void *listScrollView2Context = &listScrollView2Context;
                 // bottomContainerView添加到listFooter
             } else {
                 // bottomContainerView添加到self.view, 吸顶
+                self.panGesture.enabled = YES;
                 if (self.bottomContainerView.superview != self.view) {
                     CGRect frame = self.bottomContainerView.frame;
                     frame.origin.y = self.ceilPointHeight;
-//                    if (@available(iOS 11.0, *)) {
-//                        frame.origin.y -= self.view.safeAreaInsets.bottom;
-//                    }
                     self.bottomContainerView.frame = frame;
                     [self.view addSubview:self.bottomContainerView];
+                    self.listDict2[@(self.currentIndex2)].listScrollView.scrollEnabled = YES;
                 }
             }
-            self.listDict2[@(self.currentIndex2)].listScrollView.scrollEnabled = YES;
+            
         }
     }
     
@@ -625,6 +785,7 @@ static void *listScrollView2Context = &listScrollView2Context;
 - (void)listScrollViewDidScroll2:(UIScrollView *)scrollView {
     NSLog(@"(2)%@", NSStringFromCGPoint(scrollView.contentOffset));
     if (scrollView.contentOffset.y < 0) {
+        scrollView.contentOffset = CGPointMake(0, 0);
         scrollView.scrollEnabled = NO;
         // bottomContainerView添加到listFooter
         UIView *listFooter = self.listFooterDict[@(self.currentIndex)];
@@ -706,6 +867,59 @@ static void *listScrollView2Context = &listScrollView2Context;
             [listHeader addSubview:self.headerContainerView];
         }
     }
+    
+    // bottomContainerView回到吸底状态
+    if (listScrollView.contentOffset.y <= -(self.segmentedHeight + self.ceilPointHeight)) {
+        CGRect frame = self.bottomContainerView.frame;
+        frame.origin.y = self.view.bounds.size.height - self.segmentedHeight;
+        if (@available(iOS 11.0, *)) {
+            frame.origin.y -= self.view.safeAreaInsets.bottom;
+        }
+        self.currentBottomContainerViewY = frame.origin.y;
+        self.bottomContainerView.frame = frame;
+        [self.view addSubview:self.bottomContainerView];
+    }
+}
+
+- (void)horizontalScrollDidEndAtIndex2:(NSInteger)index {
+    // set currentIndex & currentListScrollView
+    self.currentIndex2 = index;
+    UIScrollView *listScrollView = self.listDict2[@(index)].listScrollView;
+    self.currentListScrollView2 = listScrollView;
+}
+
+- (void)dragShowing {
+    [UIView animateWithDuration:0.25 animations:^{
+        CGRect frame = self.bottomContainerView.frame;
+        frame.origin.y = self.ceilPointHeight;
+        self.bottomContainerView.frame = frame;
+        
+        self.headerContainerView.hidden = YES;
+    } completion:^(BOOL finished) {
+//        if ([self.delegate respondsToSelector:@selector(smoothViewDragEnded:isOnTop:)]) {
+//            [self.delegate smoothViewDragEnded:self isOnTop:self.isOnTop];
+//        }
+    }];
+}
+
+- (void)dragDismiss {
+    [UIView animateWithDuration:0.25 animations:^{
+        CGRect frame = self.bottomContainerView.frame;
+        frame.origin.y = self.view.frame.size.height - self.segmentedHeight;
+        if (@available(iOS 11.0, *)) {
+            frame.origin.y -= self.view.safeAreaInsets.bottom;
+        }
+        self.bottomContainerView.frame = frame;
+        
+        self.headerContainerView.hidden = NO;
+    } completion:^(BOOL finished) {
+//        [self setupDismissLayout];
+        
+//        self.isOnTop = NO;
+//        if ([self.delegate respondsToSelector:@selector(smoothViewDragEnded:isOnTop:)]) {
+//            [self.delegate smoothViewDragEnded:self isOnTop:self.isOnTop];
+//        }
+    }];
 }
 
 #pragma mark - Getters & Setters
@@ -859,6 +1073,14 @@ static void *listScrollView2Context = &listScrollView2Context;
         }
     }
     return _listCollectionView2;
+}
+
+- (UIPanGestureRecognizer *)panGesture {
+    if (!_panGesture) {
+        _panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanGesture:)];
+        _panGesture.delegate = self;
+    }
+    return _panGesture;
 }
 
 @end
