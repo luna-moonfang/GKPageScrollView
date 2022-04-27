@@ -8,6 +8,7 @@
 
 #import <UIKit/UIKit.h>
 
+// 未使用
 typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
     GKPageSmoothHoverTypeNone   = 0,    // 未悬停
     GKPageSmoothHoverTypeTop    = 1,    // 顶部悬停
@@ -29,6 +30,7 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 - (void)listViewDidAppear;
 - (void)listViewDidDisappear;
 
+// 未使用
 /// 当contentSize改变且不足一屏时，是否重置scrollView的位置，默认YES
 - (BOOL)listScrollViewShouldReset;
 
@@ -63,16 +65,19 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 /// @param scrollView containerScrollView
 - (void)smoothView:(GKPageSmoothView *)smoothView scrollViewDidScroll:(UIScrollView *)scrollView; // page滑动, 横向
 
+// 未使用
 /// 当前列表滑动代理
 /// @param smoothView smoothView
 /// @param scrollView 当前的列表scrollView
 /// @param contentOffset 转换后的contentOffset
 - (void)smoothView:(GKPageSmoothView *)smoothView listScrollViewDidScroll:(UIScrollView *)scrollView contentOffset:(CGPoint)contentOffset; // 内容滑动, 纵向, contentOffset带横向信息
 
+// 未使用
 /// 开始拖拽代理
 /// @param smoothView smoothView
 - (void)smoothViewDragBegan:(GKPageSmoothView *)smoothView; // 拖拽底部section/page
 
+// 未使用
 /// 结束拖拽代理
 /// @param smoothView smoothView
 /// @param isOnTop 是否通过拖拽滑动到顶部
@@ -104,6 +109,9 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 /// 吸顶临界高度（默认为0）
 @property (nonatomic, assign) CGFloat ceilPointHeight; // 吸顶时顶部保留的高度
 
+#pragma mark - 
+
+// 未使用
 /// 是否内部控制指示器的显示与隐藏（默认为NO）
 @property (nonatomic, assign, getter=isControlVerticalIndicator) BOOL controlVerticalIndicator;
 
@@ -113,9 +121,11 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 /// 是否允许底部拖拽，默认NO，当bottomHover为YES时才生效
 @property (nonatomic, assign, getter=isAllowDragBottom) BOOL allowDragBottom; // 是否对bottomContainerView添加gr
 
+// 未使用
 /// 是否允许底部拖拽到临界位置时可滑动scrollView，默认NO
-@property (nonatomic, assign, getter=isAllowDragScroll) BOOL allowDragScroll;
+@property (nonatomic, assign, getter=isAllowDragScroll) BOOL allowDragScroll; // ?没看出作用
 
+// 未使用
 /// 是否撑起scrollView，默认NO
 /// 如果设置为YES则当scrollView的contentSize不足时会修改scrollView的contentSize使其能够滑动到悬浮状态
 @property (nonatomic, assign, getter=isHoldUpScrollView) BOOL holdUpScrollView;
@@ -123,6 +133,7 @@ typedef NS_ENUM(NSUInteger, GKPageSmoothHoverType) {
 /// smoothView悬停类型
 @property (nonatomic, assign, readonly) GKPageSmoothHoverType hoverType;
 
+// 未使用
 /// 是否通过拖拽滑动到顶部
 @property (nonatomic, assign, readonly) BOOL isOnTop; // 通过拖拽开始向上滑动或已经滑动到吸顶
 

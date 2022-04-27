@@ -61,13 +61,14 @@ static NSString *const GKPageSmoothViewCellID = @"smoothViewCell";
 @property (nonatomic, weak) UIScrollView *scrollView; // panGesture手势所在的内容scrollview
 @property (nonatomic, assign) BOOL       isDragScrollView; // panGesture手势是否在内容scrollview上, NO表示在bottomContainerView(即segment上)
 @property (nonatomic, assign) CGFloat    lastTransitionY; // panGesture手势在bottomContainerView的CGPoint的y
-@property (nonatomic, assign) BOOL       isOnTop; // 通过拖拽开始向上滑动或已经滑动到吸顶
 
-@property (nonatomic, assign) CGFloat    currentListPanBeganContentOffsetY; // pan gr开始时内容scrollView的contentOffsetY
+// 未使用
+@property (nonatomic, assign) BOOL       isOnTop; // 通过拖拽开始向上滑动或已经滑动到吸顶
 @property (nonatomic, assign) BOOL       originBounces;
 @property (nonatomic, assign) BOOL       originShowsVerticalScrollIndicator;
-
 @property (nonatomic, assign) BOOL       isScroll; // collectionView正在滚动(翻页)
+
+@property (nonatomic, assign) CGFloat    currentListPanBeganContentOffsetY; // pan gr开始时内容scrollView的contentOffsetY
 
 @end
 
@@ -126,7 +127,8 @@ static NSString *const GKPageSmoothViewCellID = @"smoothViewCell";
     }
 }
 
-// 更新子vc的高度
+// 未使用
+// layout时更新子vc的高度
 - (void)refreshListFrame:(CGRect)frame {
     for (id<GKPageSmoothListViewDelegate> list in self.listDict.allValues) {
         CGRect f = list.listView.frame;
@@ -591,7 +593,8 @@ static NSString *const GKPageSmoothViewCellID = @"smoothViewCell";
 - (BOOL)gestureRecognizerShouldBegin:(UIPanGestureRecognizer *)gestureRecognizer {
     // 左右滑动时禁止上下滑动
     CGPoint transition = [gestureRecognizer translationInView:gestureRecognizer.view];
-    if (transition.x != 0) return NO;
+    if (transition.x != 0)
+        return NO;
     return YES;
 }
 
